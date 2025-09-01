@@ -1,27 +1,40 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="h-full">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ChromaSeek RAG</title>
-    <!-- Tailwind via CDN for crisp, modern UI -->
+
+    <!-- Tailwind (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Markdown renderer -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Syntax highlight -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
     <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body class="bg-slate-50 text-slate-900">
+  <body class="h-full bg-slate-50 text-slate-900">
     <header class="bg-white border-b border-slate-200 sticky top-0 z-10">
-      <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-        <h1 class="text-xl font-semibold tracking-tight">ChromaSeek RAG</h1>
-        <div id="statusChip" class="text-xs px-3 py-1 rounded-full bg-slate-100 text-slate-600">idle</div>
+      <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="rounded-lg bg-sky-100 text-sky-700 px-2 py-1 text-xs font-bold">RAG</div>
+          <h1 class="text-xl font-semibold tracking-tight">ChromaSeek</h1>
+          <div id="statusChip" class="hidden sm:block text-xs px-3 py-1 rounded-full bg-slate-100 text-slate-600">idle</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="darkToggle" class="btn-secondary text-xs">Dark</button>
+          <a href="/" class="btn-secondary text-xs">Refresh</a>
+        </div>
       </div>
     </header>
 
-    <main class="max-w-6xl mx-auto px-4 py-6 space-y-6">
-
-      <!-- Grid: left actions, right results -->
+    <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        <!-- LEFT COLUMN -->
+        <!-- LEFT -->
         <section class="lg:col-span-1 space-y-6">
 
           <!-- Upload -->
@@ -31,7 +44,7 @@
               <button id="refreshBtn" class="btn-secondary">Refresh</button>
             </div>
             <div id="dropZone" class="dropzone">
-              <div class="text-center">
+              <div class="text-center space-y-1">
                 <div class="text-slate-600 font-medium">Drag & drop PDFs here</div>
                 <div class="text-slate-500 text-sm">or</div>
                 <label class="mt-2 inline-block">
@@ -40,45 +53,55 @@
                 </label>
               </div>
             </div>
-            <div id="uploadList" class="mt-3"></div>
+            <div id="uploadList" class="mt-3 space-y-1"></div>
           </div>
 
-          <!-- Ingest -->
+          <!-- Index / Stats -->
           <div class="card">
             <div class="card-h">
               <h2 class="card-title">Index</h2>
               <button id="ingestBtn" class="btn">Build / Rebuild</button>
             </div>
-            <div id="statsBox" class="text-sm text-slate-600">
-              <div>Collection vectors: <span id="vecCount">0</span></div>
-              <div class="mt-2">
-                <div class="text-slate-500 mb-1">PDFs</div>
-                <ul id="pdfList" class="space-y-1"></ul>
+            <div class="grid grid-cols-2 gap-3 text-sm">
+              <div class="metric">
+                <div class="metric-label">Vectors</div>
+                <div id="vecCount" class="metric-value">0</div>
               </div>
+              <div class="metric">
+                <div class="metric-label">PDFs</div>
+                <div id="pdfCount" class="metric-value">0</div>
+              </div>
+            </div>
+            <div class="mt-3">
+              <div class="text-slate-500 text-xs mb-1">Library</div>
+              <ul id="pdfList" class="space-y-1 max-h-48 overflow-auto pr-1"></ul>
             </div>
           </div>
 
           <!-- Settings -->
           <div class="card">
-            <h2 class="card-title">Settings</h2>
-            <label class="flex items-center justify-between text-sm">
-              <span>Top-K</span>
-              <input id="topK" type="range" min="1" max="20" value="6" class="w-40" />
+            <h2 class="card-title mb-3">Settings</h2>
+            <div class="flex items-center justify-between text-sm">
+              <label for="topK" class="text-slate-700">Top-K</label>
+              <input id="topK" type="range" min="1" max="20" value="6" class="w-44" />
               <span id="topKVal" class="text-slate-700 font-medium ml-2">6</span>
-            </label>
+            </div>
           </div>
         </section>
 
-        <!-- RIGHT COLUMN -->
+        <!-- RIGHT -->
         <section class="lg:col-span-2 space-y-6">
 
           <!-- Ask -->
           <div class="card">
-            <h2 class="card-title">Ask a question</h2>
+            <div class="flex items-center justify-between">
+              <h2 class="card-title">Ask a question</h2>
+              <div class="text-xs text-slate-500" id="latency"></div>
+            </div>
             <textarea id="q" rows="4" class="inp" placeholder="Ask about your reports..."></textarea>
             <div class="flex items-center gap-3 mt-3">
               <button id="askBtn" class="btn">Ask</button>
-              <span id="latency" class="text-xs text-slate-500"></span>
+              <button id="clearBtn" class="btn-secondary">Clear</button>
             </div>
           </div>
 
@@ -86,9 +109,11 @@
           <div class="card">
             <div class="flex items-center justify-between">
               <h2 class="card-title">Answer</h2>
-              <button id="copyAns" class="btn-secondary text-xs">Copy</button>
+              <div class="flex items-center gap-2">
+                <button id="copyAns" class="btn-secondary text-xs">Copy</button>
+              </div>
             </div>
-            <div id="answer" class="prose"></div>
+            <div id="answer" class="prose mt-1"></div>
             <div id="sources" class="mt-3 flex flex-wrap gap-2"></div>
           </div>
 
@@ -100,14 +125,11 @@
             </div>
             <div id="passages" class="space-y-3"></div>
           </div>
-
         </section>
       </div>
     </main>
 
-    <!-- Toast -->
     <div id="toast" class="toast hidden"></div>
-
     <script src="/app.js"></script>
   </body>
 </html>

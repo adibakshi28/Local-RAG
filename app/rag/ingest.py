@@ -1,10 +1,12 @@
-import os
+import os, json
 from typing import List, Dict
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 from sentence_transformers import SentenceTransformer
-from .utils import read_pdfs, chunk_text
 from app.core.config import get_settings
+from .utils import read_pdf_pages, page_aware_chunks, sha256_file
+
+MANIFEST = "manifest.json"  # saved under CHROMA_DIR
 
 def _client():
     s = get_settings()
@@ -20,44 +22,98 @@ def _collection(client):
         metadata={"hnsw:space": "cosine"}
     )
 
+def _load_manifest(dir_path: str) -> Dict:
+    path = os.path.join(dir_path, MANIFEST)
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {"files": {}}
+
+def _save_manifest(dir_path: str, data: Dict):
+    path = os.path.join(dir_path, MANIFEST)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
 def build_index():
     s = get_settings()
     client = _client()
-    # reset collection (safe if not present)
-    try:
-        client.delete_collection("papers")
-    except Exception:
-        pass
     coll = _collection(client)
-
-    docs = read_pdfs(s.PDF_DIR)
-    if not docs:
-        raise RuntimeError(f"No PDFs found in {s.PDF_DIR}")
-
     embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
-    records: List[Dict] = []
-    for d in docs:
-        chunks = chunk_text(d["text"], size=s.CHUNK_SIZE, overlap=s.CHUNK_OVERLAP)
-        fname = os.path.basename(d["path"])
-        for i, ch in enumerate(chunks):
-            records.append({
-                "id": f"{fname}:::{i}",
-                "document": ch,
-                "metadata": {"source": fname, "chunk_id": f"{fname}:::{i}"}
-            })
+    # manifest for incremental ingest
+    manifest = _load_manifest(s.CHROMA_DIR)
 
-    if not records:
-        raise RuntimeError("No text extracted from PDFs.")
+    # scan PDFs
+    os.makedirs(s.PDF_DIR, exist_ok=True)
+    pdfs = [f for f in os.listdir(s.PDF_DIR) if f.lower().endswith(".pdf")]
+    added, updated, skipped = 0, 0, 0
+    all_records: List[Dict] = []
 
-    texts = [r["document"] for r in records]
-    embs = embedder.encode(texts, normalize_embeddings=True, convert_to_numpy=True)
+    for fname in sorted(pdfs):
+        fpath = os.path.join(s.PDF_DIR, fname)
+        file_hash = sha256_file(fpath)
+        prev = manifest["files"].get(fname)
 
-    coll.add(
-        ids=[r["id"] for r in records],
-        documents=texts,
-        metadatas=[r["metadata"] for r in records],
-        embeddings=embs.tolist()
-    )
+        # if unchanged, skip re-embedding
+        if prev and prev.get("hash") == file_hash:
+            skipped += 1
+            continue
 
-    return {"vectors": len(records), "sources": sorted({r['metadata']['source'] for r in records})}
+        # delete old chunks for this source (if any)
+        try:
+            coll.delete(where={"source": fname})
+        except Exception:
+            pass
+
+        # extract page-by-page, chunk with page numbers
+        records = []
+        for page_idx, text in read_pdf_pages(fpath):
+            chunks = page_aware_chunks(
+                text,
+                page_index=page_idx,
+                target_tokens=450,
+                overlap_tokens=60
+            )
+            for i, ch in enumerate(chunks):
+                records.append({
+                    "id": f"{fname}:::{page_idx}:::{i}",
+                    "document": ch["text"],
+                    "metadata": {
+                        "source": fname,
+                        "page": page_idx,
+                        "chunk_id": f"{fname}:::{page_idx}:::{i}"
+                    }
+                })
+
+        # embed + add
+        if records:
+            texts = [r["document"] for r in records]
+            embs = embedder.encode(texts, normalize_embeddings=True, convert_to_numpy=True)
+
+            coll.add(
+                ids=[r["id"] for r in records],
+                documents=texts,
+                metadatas=[r["metadata"] for r in records],
+                embeddings=embs.tolist()
+            )
+            updated += 1 if prev else 0
+            added += 0 if prev else 1
+
+            # save doc stats to manifest
+            manifest["files"][fname] = {
+                "hash": file_hash,
+                "chunks": len(records)
+            }
+
+        all_records.extend(records)
+
+    _save_manifest(s.CHROMA_DIR, manifest)
+
+    return {
+        "status": "ok",
+        "sources": sorted([f for f in manifest["files"].keys()]),
+        "added_files": added,
+        "updated_files": updated,
+        "skipped_files": skipped,
+        "vectors": coll.count()
+    }

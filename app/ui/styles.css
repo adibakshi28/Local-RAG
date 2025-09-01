@@ -1,23 +1,39 @@
-/* layout helpers */
-.card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px; }
+/* cards & buttons */
+.card { background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:16px; box-shadow:0 1px 0 #eef2f7; }
 .card-h { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-.card-title { font-weight:600; font-size:16px; color:#0f172a; }
+.card-title { font-weight:700; font-size:16px; color:#0f172a; }
 
-.btn { background:#0ea5e9; color:white; padding:8px 14px; border-radius:10px; font-weight:600; }
+.btn { background:#0ea5e9; color:white; padding:8px 14px; border-radius:10px; font-weight:700; }
 .btn:hover { filter:brightness(0.95); }
-.btn-secondary { background:#f1f5f9; color:#0f172a; padding:8px 12px; border-radius:10px; font-weight:600; }
+.btn-secondary { background:#f1f5f9; color:#0f172a; padding:8px 12px; border-radius:10px; font-weight:700; }
+.btn-secondary:hover { filter:brightness(0.98); }
 
-.inp { width:100%; border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px; outline:none; }
+.inp { width:100%; border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px; outline:none; background:white; }
 .inp:focus { border-color:#0ea5e9; box-shadow:0 0 0 3px rgba(14,165,233,0.15); }
 
 .dropzone { border:2px dashed #cbd5e1; border-radius:12px; padding:24px; background:#f8fafc; }
 .dropzone.drag { background:#f0f9ff; border-color:#0ea5e9; }
 
 .badge { background:#f1f5f9; color:#0f172a; font-size:12px; padding:4px 8px; border-radius:999px; }
-
-.toast { position:fixed; bottom:16px; right:16px; background:#0f172a; color:#fff; padding:10px 14px; border-radius:10px; font-weight:600; box-shadow:0 10px 30px rgba(2,8,23,.25); }
+.toast { position:fixed; bottom:16px; right:16px; background:#0f172a; color:#fff; padding:10px 14px; border-radius:10px; font-weight:700; box-shadow:0 10px 30px rgba(2,8,23,.25); }
 .hidden { display:none; }
 
-/* prose-ish answer */
-.prose { white-space:pre-wrap; line-height:1.6; color:#0f172a; }
-.code { background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+.metric { background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px; }
+.metric-label { color:#64748b; font-size:12px; }
+.metric-value { color:#0f172a; font-weight:800; font-size:18px; }
+
+/* prose */
+.prose { color:#0f172a; }
+.prose h1,.prose h2,.prose h3 { font-weight:700; margin-top:0.75rem; }
+.prose p, .prose ul, .prose ol { margin: 0.5rem 0; }
+.prose code, .code { background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:2px 6px; }
+
+/* dark mode (class toggled on <html>) */
+:root.dark body { background:#0b1220; color:#e2e8f0; }
+:root.dark .card { background:#0f172a; border-color:#1f2937; box-shadow:none; }
+:root.dark .inp { background:#0b1220; border-color:#243145; color:#e2e8f0; }
+:root.dark .btn-secondary { background:#0b1220; color:#e2e8f0; border:1px solid #243145; }
+:root.dark .dropzone { background:#0b1220; border-color:#243145; }
+:root.dark .badge { background:#0b1220; color:#e2e8f0; border:1px solid #243145; }
+:root.dark .metric { background:#0b1220; border-color:#243145; }
+:root.dark .prose { color:#e2e8f0; }
