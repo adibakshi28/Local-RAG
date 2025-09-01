@@ -20,7 +20,7 @@ Works great for a handful of PDFs (or dozens) without a GPU. Built for simple de
 
 ---
 
-## 📦 Tech
+## Tech
 
 - **FastAPI**, **Uvicorn**
 - **ChromaDB** (SQLite HNSW)
