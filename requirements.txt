@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+requests
+pydantic
+pydantic-settings
+python-multipart
+python-dotenv
+pypdf
+chromadb
+sentence-transformers
+transformers
+torch
+openai>=1.0.0
