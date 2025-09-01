@@ -3,15 +3,15 @@ import requests, json
 from app.core.config import get_settings
 
 SYS_PROMPT = """
-You are a grounded research assistant.
-- Answer ONLY using the provided context.
+You are a helpful assistant.
+- Answer using the provided context.
 - If the answer is not supported by the context, say "I don't know based on the provided documents."
 - Be concise and structure the answer clearly.
 - Cite inline using [filename p.X] where evidence appears.
 """
 
 # threshold below which we choose to say "I don't know"
-MIN_SIM_THRESHOLD = 0.15
+MIN_SIM_THRESHOLD = 0.1
 
 def _build_context(passages: List[Dict]) -> str:
     blocks = []
